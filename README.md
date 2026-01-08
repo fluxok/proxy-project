@@ -7,6 +7,15 @@ The implementation is kept simple and clear for learning and academic use.
 
 ---
 
+## Demo Video
+
+Click the image below to watch a short demonstration of the Custom Network Proxy Server handling HTTP and HTTPS requests:
+
+
+[![Proxy Server Demo](https://img.youtube.com/vi/gDESLKucwMI/0.jpg)](https://youtu.be/gDESLKucwMI)
+
+---
+
 ## What the Proxy Does
 
 - Accepts client connections on a fixed port
