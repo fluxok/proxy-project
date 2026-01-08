@@ -1,23 +1,13 @@
-# Custom Network Proxy Server (PS)
+## 1. Overview
 
 This project implements a **Custom Network Proxy Server (PS)** in Java.  
-The proxy server works as an intermediary between a client and a destination server. It receives client requests, applies basic rules, forwards the traffic, and returns the response.
+The proxy server listens for client connections, receives HTTP/HTTPS requests, applies basic domain filtering, and forwards traffic to the destination server. Responses from the server are sent back to the client through the proxy.
 
-The implementation is kept simple and clear for learning and academic use.
-
----
-
-## What the Proxy Does
-
-- Accepts client connections on a fixed port
-- Forwards normal HTTP requests
-- Creates tunnels for HTTPS connections (CONNECT method)
-- Blocks requests to selected domains
-- Logs basic request information
+The design is intentionally simple and readable, focusing on correct proxy behavior as defined in the problem statement.
 
 ---
 
-## Project Structure (proxy-project)
+## 2. Folder Structure (proxy-project)
 
 ### src/
 
@@ -43,51 +33,88 @@ The implementation is kept simple and clear for learning and academic use.
 
     ├── DESIGN.md
     ├── README.md
+---
+
+## 3. Architecture
+
+The proxy follows a **client–proxy–server** model.
+
+- `ProxyServer` listens on a port and accepts client connections.
+- Each client connection is handled independently.
+- Requests are parsed, checked, and then forwarded to the target server.
+- Responses flow back through the proxy to the client.
+
+There is no caching or modification of content.
 
 ---
 
-## File Overview
+## 4. Concurrency Model
 
-- `ProxyServer.java`  
-  Starts the proxy server and accepts client connections.
+The proxy uses a **fixed thread pool**.
 
-- `ClientHandler.java`  
-  Handles a single client request from start to end.
-
-- `HttpRequestParser.java` / `HttpRequest.java`  
-  Parses incoming HTTP requests and stores request data.
-
-- `RequestForwarder.java`  
-  Forwards HTTP requests to the destination server.
-
-- `HttpsTunnel.java`  
-  Handles HTTPS connections using TCP tunneling.
-
-- `SocketRelay.java`  
-  Relays raw data between client and server sockets.
-
-- `DomainFilter.java`  
-  Blocks requests based on domain names.
-
-- `Logger.java`  
-  Writes simple logs for requests and blocked access.
+- A thread pool is created at startup.
+- Each incoming client socket is handled by a separate task.
 
 ---
 
-## How to Run
+## 5. Request Processing Flow
 
-1. Compile the source files:
-   ```bash
-   javac src/*.java
-
-2. Run the proxy server:
-   ```bash
-   java src.ProxyServer
+1. Client connects to the proxy.
+2. `ClientHandler` starts processing the connection.
+3. `HttpRequestParser` reads and parses the request.
+4. `DomainFilter` checks whether the target host is blocked.
+5. Based on request type:
+   - HTTP → forwarded normally.
+   - HTTPS (CONNECT) → tunnel is created.
+6. Data is relayed between client and server.
+7. Connection is closed after completion.
 
 ---
 
-## Notes
+## 6. HTTP Handling
 
-- Blocked domains are listed in `config/blocked_domains.txt`
-- Logs are written to `logs/proxy.log`
-- This proxy is not intended for production use
+- HTTP requests are parsed into an `HttpRequest` object.
+- `RequestForwarder` opens a socket to the destination server.
+- Request headers and body are forwarded as they are.
+- The server response is streamed back to the client using `SocketRelay`.
+- The proxy does not store or alter HTTP responses.
+
+---
+
+## 7. HTTPS (CONNECT) Handling
+
+- HTTPS requests using the `CONNECT` method are detected.
+- `HttpsTunnel` establishes a TCP connection to the target server.
+- A `200 Connection Established` response is sent to the client.
+- Bidirectional byte streams are relayed between client and server.
+- TLS encryption remains end-to-end and untouched by the proxy.
+
+---
+
+## 8. Domain Filtering
+
+- Blocked domains are listed in `config/blocked_domains.txt`.
+- `DomainFilter` loads this list at startup.
+- Requests to blocked domains return a `403 Forbidden` response or an empty line in terminal.
+- Subdomains of blocked domains are also blocked (implemented using suffix matching).
+
+---
+
+## 9. Logging
+
+- All important events are logged to `logs/proxy.log`.
+- Logged information includes:
+  - Client IP address
+  - Request method
+  - Target host
+  - Blocked or allowed status
+
+---
+
+## 10. Limitations
+
+- Uses blocking I/O and a simple thread pool.
+- No caching or authentication support.
+- No HTTPS inspection or TLS termination.
+- Limited error handling for malformed requests.
+- Not production use.
