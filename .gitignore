@@ -1,0 +1,7 @@
+# bytecodes of java file
+*.class
+
+# logs
+logs/
+*.log
+
